@@ -1,0 +1,7 @@
+route:
+  receiver: "pager"
+
+receivers:
+  - name: "pager"
+    webhook_configs:
+      - url: "https://36b4-2401-4900-5639-e053-f145-77a8-1e-c2fb.ngrok-free.app/alerts"
