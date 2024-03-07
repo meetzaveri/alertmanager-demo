@@ -1,4 +1,4 @@
-# Hasura Enterprise Observability Demo
+# Hasura Enterprise Observability Demo (Alerting)
 
 This demo is made to showcase working of alertmanager and prometheus with Hasura. There is a node-server service which will listen to alerts from alertmanager.
 
@@ -13,53 +13,35 @@ You can either extract the functionality from this demo and merge it with rest o
 - Copy `dotenv` to `.env` and configure secrets and EE License Key.
 - Try `docker-compose` locally with `docker-compose up -d`, or run the Docker Swarm stack with scripts that are in the `util` folder.
 
-## List of important metrics 
-- hasura_graphql_requests_total (No of hasura graphql requests in time-series fashion). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-graphql-requests-total)
-- hasura_postgres_connections (No of PG connections opened by Hasura). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-postgres-connections)
-- hasura_graphql_execution_time_seconds (The execution time in seconds). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-graphql-execution-time-seconds)
-- hasura_http_connections (The no. of active HTTP connections representing the HTTP load on the server ). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-http-connections)
+## List of important metrics (from hasura POV)
+- `hasura_graphql_requests_total` (No of hasura graphql requests in time-series fashion). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-graphql-requests-total)
+- `hasura_postgres_connections` (No of PG connections opened by Hasura). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-postgres-connections)
+- `hasura_graphql_execution_time_seconds` (The execution time in seconds). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-graphql-execution-time-seconds)
+- `hasura_http_connections` (The no. of active HTTP connections representing the HTTP load on the server ). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-http-connections)
 
 In case you are using subscriptions (over websocket connections)
-- hasura_websocket_connections (Current number of active WebSocket connections, representing the WebSocket load on the server). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-websocket-connections)
+- `hasura_websocket_connections` (Current number of active WebSocket connections, representing the WebSocket load on the server). [docs](https://hasura.io/docs/latest/observability/enterprise-edition/prometheus/metrics/#hasura-websocket-connections)
 
-### how to configure/tweak the alert rules
 
-For example, lets say we want to tweak this expression of `HighGraphQLRequestsWarning` alert
+### Key `Alertmanager` functions used in alert rules
+
+`increase ()` (docs)[https://prometheus.io/docs/prometheus/latest/querying/functions/#increase]
+
+example 
 ```
-increase(hasura_graphql_requests_total[1m]) > 10
-```
-
-To breakdown
-- hasura_graphql_requests_total[1m]: This part of the expression queries a metric called hasura_graphql_requests_total. The [1m] part specifies that it's looking at data over a 1-minute window. Essentially, it's calculating the rate of increase in the number of requests per minute.
-
-- increase(): This function calculates the increase in the value of a metric over a given time range. In this case, it's looking at the increase in the number of GraphQL requests over the last 1 minute.
-
-- `> 10`: This condition checks if the increase in the number of GraphQL requests over the last minute is greater than 10.
-
-Suppose your on avg. hourly traffic is 10000 requests. The fluctuations can happen between 10-15K. 
-
-But if you want to set alert if it crosses the threshold of 20000 requests per hour , then you can do something similar expression
-```
-increase(hasura_graphql_requests_total[1h]) > hasura_graphql_requests_total[2h]
-```
-or if want a shorter duration
-```
-increase(hasura_graphql_requests_total[30m]) > hasura_graphql_requests_total[1h]
+(increase(hasura_graphql_requests_total{response_status="failed"}[5m]) / increase(hasura_graphql_requests_total[5m])) >= 0.5
 ```
 
-### Key Alertmanager Functions to use in alert rules
+`rate()` (docs)[https://prometheus.io/docs/prometheus/latest/querying/functions/#rate]
 
-#### `increase ()` (https://prometheus.io/docs/prometheus/latest/querying/functions/#increase) 
-
-example - `(increase(hasura_graphql_requests_total{response_status="failed"}[5m]) / increase(hasura_graphql_requests_total[5m])) >= 0.5`
-
-#### `rate()` (https://prometheus.io/docs/prometheus/latest/querying/functions/#rate)
-
-example - `sum(rate(hasura_graphql_execution_time_seconds_bucket[5m]))`
+example
+```
+sum(rate(hasura_graphql_execution_time_seconds_bucket[5m]))
+```
 
 Other functions for alertmanager can be found here - https://prometheus.io/docs/prometheus/latest/querying/functions/
 
-## Key files and folders
+## Important Key files and folders
 **alertmanager**
 - this contains the config for alertmanager
 - in config.yaml file, I have passed endpoint to my node server with HTTPS protocol. For some reason it's having connection issues when passed the local instance URL with HTTP scheme.
@@ -76,9 +58,9 @@ one example of alert rule where I have used hasura_graphql_requests_total metric
 
 
 ## External Links
-Alertmanager - https://prometheus.io/docs/alerting/latest/alertmanager/
-Prometheus - https://prometheus.io/docs/prometheus/latest/getting_started/
-Grafana - https://grafana.com/oss/grafana/
+- Alertmanager - https://prometheus.io/docs/alerting/latest/alertmanager/
+- Prometheus - https://prometheus.io/docs/prometheus/latest/getting_started/
+- Grafana - https://grafana.com/oss/grafana/
 
 ## Components
 
@@ -106,9 +88,30 @@ Dashboard templates are collected in the [dashboards/hasura](grafana/dashboards/
 
 To enable Source Health check metrics you need to configure the [health check metadata](https://hasura.io/docs/latest/deployment/health-checks/source-health-check/#configuring-source-health-check) for each data source.
 
-**How can I find the Trace ID of GraphQL Requests**
+**How to configure/tweak the alert rules**
 
-You can find the Trace ID in the `X-B3-TraceId` request header.
+For example, lets say we want to tweak this expression of `HighGraphQLRequestsWarning` alert
+```
+increase(hasura_graphql_requests_total[1m]) > 10
+```
+
+To breakdown
+- `hasura_graphql_requests_total[1m]`: This part of the expression queries a metric called hasura_graphql_requests_total. The `[1m]` part specifies that it's looking at data over a 1-minute window. Essentially, it's calculating the rate of increase in the number of requests per minute.
+
+- `increase()`: This function calculates the increase in the value of a metric over a given time range. In this case, it's looking at the increase in the number of GraphQL requests over the last 1 minute.
+
+- `> 10`: This condition checks if the increase in the number of GraphQL requests over the last minute is greater than 10.
+
+Suppose your on avg. hourly traffic is 10000 requests. The fluctuations can happen between 10-15K. 
+
+But if you want to set alert if it crosses the threshold of 20000 requests per hour , then you can do something similar expression
+```
+increase(hasura_graphql_requests_total[1h]) > hasura_graphql_requests_total[2h]
+```
+or if want a shorter duration
+```
+increase(hasura_graphql_requests_total[30m]) > hasura_graphql_requests_total[1h]
+```
 
 ## Screenshots
 
