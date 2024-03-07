@@ -75,19 +75,24 @@ one example of alert rule where I have used hasura_graphql_requests_total metric
 - Please change this webhook to point towards your desired backend server webhook. In case if you haven't exposed a specific path endpoint in your backend server dedicated to recieving alerts, please create one.
 
 
+## External Links
+Alertmanager - https://prometheus.io/docs/alerting/latest/alertmanager/
+Prometheus - https://prometheus.io/docs/prometheus/latest/getting_started/
+Grafana - https://grafana.com/oss/grafana/
+
 ## Components
 
 Here's a list of all the services that are created:
 
 | Service           |  Port  | Description                         | Notes                                         |
-| ----------------- | :----: | ----------------------------------- | --------------------------------------------- | --- |
+| ----------------- | :----: | ----------------------------------- | --------------------------------------------- |
 | Prometheus        | :9090  | Data Aggregator                     |                                               |
 | Alert Manager     | :9093  | Adds Alerting for Prometheus Checks |                                               |
 | Grafana           | :3000  | UI To Show Prometheus Data          | Username: `admin`, Password: `HGEMonitoring!` |
 | Node Exporter     | :9100  | Data Collector for Host Stats       |                                               |
 | Node Server       | :8000  | Node.js server (app)                |                                               |
-| HGE               | :8080  | Hasura GraphQL Engine               |                                               |     |
-| Postgres          | :5432  | Postgres 15 Database Container      |                                               |     |
+| HGE               | :8080  | Hasura GraphQL Engine               |                                               |
+| Postgres          | :5432  | Postgres 15 Database Container      |                                               |
 
 ### Grafana Dashboards
 
