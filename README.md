@@ -25,14 +25,15 @@ In case you are using subscriptions (over websocket connections)
 
 ### Key `Alertmanager` functions used in alert rules
 
-`increase ()` (docs)[https://prometheus.io/docs/prometheus/latest/querying/functions/#increase]
+`increase ()` [docs](https://prometheus.io/docs/prometheus/latest/querying/functions/#increase)
 
 example 
 ```
 (increase(hasura_graphql_requests_total{response_status="failed"}[5m]) / increase(hasura_graphql_requests_total[5m])) >= 0.5
 ```
 
-`rate()` (docs)[https://prometheus.io/docs/prometheus/latest/querying/functions/#rate]
+---
+`rate()` [docs](https://prometheus.io/docs/prometheus/latest/querying/functions/#rate)
 
 example
 ```
