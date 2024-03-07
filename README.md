@@ -105,13 +105,9 @@ To breakdown
 
 Suppose your on avg. hourly traffic is 10000 requests. The fluctuations can happen between 10-15K. 
 
-But if you want to set alert if it crosses the threshold of 20000 requests per hour , then you can do something similar expression
+if the traffic is increasing at a rate that would double the previous hour's count
 ```
-increase(hasura_graphql_requests_total[1h]) > hasura_graphql_requests_total[2h]
-```
-or if want a shorter duration
-```
-increase(hasura_graphql_requests_total[30m]) > hasura_graphql_requests_total[1h]
+rate(hasura_graphql_requests_total[1h]) > 2
 ```
 
 ## Screenshots
