@@ -4,4 +4,4 @@ route:
 receivers:
   - name: "pager"
     webhook_configs:
-      - url: "https://cf16-2409-4041-d94-d942-54ec-14fd-3942-20b1.ngrok-free.app/alerts"
+      - url: "https://71fd-2409-4041-d89-ca72-c9d7-384f-6a20-849b.ngrok-free.app/alerts"
