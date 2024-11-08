@@ -29,6 +29,15 @@ groups:
     annotations:
       title: "High GraphQL error rate"
       description: "The error rate of GraphQL requests from your instance {{ $labels.instance }} exceeds {{ $value | humanizePercentage }}"
+
+  - alert: GraphQLGetTracksElevatedErrorWarning
+    expr: '(increase(hasura_graphql_requests_total{response_status="failed", operation_name="getTracks"}[1m]) / increase(hasura_graphql_requests_total{operation_name="getTracks"}[1m])) >= 0.5'
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      title: "Elevated GraphQL error rate for getTracks operation "
+      description: "The error rate of GraphQL request getTracks from your instance {{ $labels.instance }} exceeds {{ $value | humanizePercentage }}"
  
   - alert: HighGraphQLRequestsWarning
     expr: 'increase(hasura_graphql_requests_total[1m]) > 10'

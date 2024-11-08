@@ -1,0 +1,10 @@
+- name: alive-buggy
+  definition:
+    url: https://alive-buggy-77.hasura.app/v1/graphql
+    timeout_seconds: 60
+    customization: {}
+    headers:
+      - name: x-hasura-admin-secret
+        value: XqsfQVKr8cevrJ1XsxTzNZELMQ8qE23AM0NqFfRQBD2Ww44habSXi1PMXVGXc9te
+    forward_client_headers: true
+  comment: ""

@@ -1,0 +1,1906 @@
+{
+  "sources": [
+    {
+      "configuration": {
+        "connection_info": {
+          "database_url": { "from_env": "PG_DATABASE_URL" },
+          "isolation_level": "read-committed",
+          "ssl_configuration": {
+            "sslmode": "verify-full",
+            "sslrootcert": { "from_env": "SSL_ROOT_CERT" }
+          },
+          "use_prepared_statements": false
+        }
+      },
+      "customization": { "naming_convention": "graphql-default" },
+      "functions": [
+        { "function": { "name": "event_search", "schema": "public" } },
+        { "function": { "name": "events_by_source_id", "schema": "public" } },
+        {
+          "configuration": {
+            "custom_root_fields": {},
+            "session_argument": "hasura_session"
+          },
+          "function": { "name": "grid_local", "schema": "public" }
+        },
+        { "function": { "name": "profile_by_handle", "schema": "public" } },
+        { "function": { "name": "venues_by_source_id", "schema": "public" } }
+      ],
+      "kind": "postgres",
+      "name": "default",
+      "tables": [
+        {
+          "is_enum": true,
+          "table": { "name": "album_type", "schema": "enums" }
+        },
+        {
+          "is_enum": true,
+          "table": { "name": "media_type", "schema": "enums" }
+        },
+        {
+          "is_enum": true,
+          "table": { "name": "reaction_type", "schema": "enums" }
+        },
+        { "is_enum": true, "table": { "name": "rsvp", "schema": "enums" } },
+        {
+          "is_enum": true,
+          "table": { "name": "spark_type", "schema": "enums" }
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "album": {
+                    "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_album_unlock_created",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerNotifyAlbumUnlock"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "album": {
+                    "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                  }
+                },
+                "columns": ["album_id", "grantee_id"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "album",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "album_id": "id" },
+                  "remote_table": { "name": "media_album", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "grantee",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "grantee_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": ["album_id", "grantee_id", "timestamp"],
+                "filter": {
+                  "_or": [
+                    {
+                      "album": {
+                        "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                      }
+                    },
+                    {
+                      "grantee": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    }
+                  ]
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "album_unlock", "schema": "public" }
+        },
+        {
+          "array_relationships": [
+            {
+              "name": "comments",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "event_id" },
+                  "remote_table": {
+                    "name": "event_comment",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "rsvps",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "event_id" },
+                  "remote_table": { "name": "event_rsvp", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "computed_fields": [
+            {
+              "comment": "Event RSVPs of current user's friends",
+              "definition": {
+                "function": {
+                  "name": "friends_event_rsvp",
+                  "schema": "public"
+                },
+                "session_argument": "hasura_session",
+                "table_argument": "event_row"
+              },
+              "name": "friendsRsvp"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" },
+                "update": { "columns": ["details"] }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_event_created_or_details_updated",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerFetchEventImages"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "venue",
+              "using": { "foreign_key_constraint_on": "venue_id" }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "details",
+                  "source_ids",
+                  "title",
+                  "created_at",
+                  "ends_at",
+                  "starts_at",
+                  "updated_at",
+                  "id",
+                  "venue_id"
+                ],
+                "filter": {},
+                "limit": 100,
+                "query_root_fields": ["select", "select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "event", "schema": "public" }
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["event_id", "author_id", "content"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "author",
+              "using": { "foreign_key_constraint_on": "author_id" }
+            },
+            {
+              "name": "event",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "event_id": "id" },
+                  "remote_table": { "name": "event", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "id",
+                  "event_id",
+                  "author_id",
+                  "content",
+                  "created_at"
+                ],
+                "filter": {},
+                "query_root_fields": ["select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "event_comment", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["content"],
+                "filter": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "attendee": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "attendee": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["event_id", "attendee_id", "rsvp"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "attendee",
+              "using": { "foreign_key_constraint_on": "attendee_id" }
+            },
+            {
+              "name": "event",
+              "using": { "foreign_key_constraint_on": "event_id" }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": ["event_id", "attendee_id", "rsvp", "updated_at"],
+                "filter": {},
+                "query_root_fields": [],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "event_rsvp", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": ["rsvp", "updated_at"],
+                "filter": {
+                  "attendee": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "_or": [
+                    {
+                      "profile1": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    },
+                    {
+                      "profile2": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    }
+                  ]
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" },
+                "update": { "columns": ["updated_at"] }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_friendship_created_or_updated",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerNotifyFriendship"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "requester": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["profile1_id", "profile2_id", "requester_id"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "profile1",
+              "using": { "foreign_key_constraint_on": "profile1_id" }
+            },
+            {
+              "name": "profile2",
+              "using": { "foreign_key_constraint_on": "profile2_id" }
+            },
+            {
+              "name": "requester",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "requester_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "profile1_id",
+                  "profile2_id",
+                  "requester_id",
+                  "created_at",
+                  "updated_at",
+                  "is_accepted"
+                ],
+                "filter": {
+                  "_or": [
+                    {
+                      "profile1": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    },
+                    {
+                      "profile2": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    }
+                  ]
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "friendship", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "_or": [
+                    {
+                      "_and": [
+                        {
+                          "requester": {
+                            "user": {
+                              "firebase_id": { "_eq": "X-Hasura-User-Id" }
+                            }
+                          }
+                        },
+                        { "is_accepted": { "_eq": false } }
+                      ]
+                    },
+                    {
+                      "_and": [
+                        {
+                          "requester": {
+                            "user": {
+                              "firebase_id": { "_ne": "X-Hasura-User-Id" }
+                            }
+                          }
+                        },
+                        { "is_accepted": { "_eq": true } }
+                      ]
+                    }
+                  ]
+                },
+                "columns": ["is_accepted", "updated_at"],
+                "filter": {
+                  "_and": [
+                    { "is_accepted": { "_eq": false } },
+                    {
+                      "_or": [
+                        {
+                          "profile1": {
+                            "user": {
+                              "firebase_id": { "_eq": "X-Hasura-User-Id" }
+                            }
+                          }
+                        },
+                        {
+                          "profile2": {
+                            "user": {
+                              "firebase_id": { "_eq": "X-Hasura-User-Id" }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "set": { "updated_at": "now()" }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "array_relationships": [
+            {
+              "name": "albumUnlocks",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "album_id" },
+                  "remote_table": { "name": "album_unlock", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "mediaItems",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "media_album_id",
+                  "table": { "name": "media_item", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "_and": [
+                    {
+                      "profile": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    },
+                    { "album_type": { "_neq": "profile" } }
+                  ]
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "update": { "columns": ["order"] }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_media_album_order_updated",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerUpdateAvatar"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                },
+                "columns": ["profile_id", "album_type", "name", "order"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "profile",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "profile_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "id",
+                  "profile_id",
+                  "album_type",
+                  "name",
+                  "created_at",
+                  "order"
+                ],
+                "filter": {},
+                "query_root_fields": ["select_by_pk"],
+                "subscription_root_fields": ["select_by_pk"]
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "media_album", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                },
+                "columns": ["name", "order"],
+                "filter": {
+                  "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "album": {
+                    "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "delete": { "columns": "*" },
+                "enable_manual": false
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_media_item_deleted",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerDeleteMediaItemFiles"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "album": {
+                    "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                  }
+                },
+                "columns": ["media_album_id", "media_type", "uri", "caption"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "album",
+              "using": { "foreign_key_constraint_on": "media_album_id" }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "id",
+                  "media_album_id",
+                  "media_type",
+                  "uri",
+                  "caption",
+                  "created_at"
+                ],
+                "filter": {},
+                "query_root_fields": ["select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "media_item", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "album": {
+                    "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                  }
+                },
+                "columns": ["uri", "caption"],
+                "filter": {
+                  "album": {
+                    "__profile_id58": { "_in": "x-hasura-allowed-profiles" }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "array_relationships": [
+            {
+              "name": "comments",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "post_id" },
+                  "remote_table": { "name": "post_comment", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "reactions",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "post_id" },
+                  "remote_table": {
+                    "name": "post_reaction",
+                    "schema": "public"
+                  }
+                }
+              }
+            }
+          ],
+          "computed_fields": [
+            {
+              "comment": "Whether the post is pinned or not, based on the current time",
+              "definition": {
+                "function": { "name": "post_is_pinned", "schema": "public" }
+              },
+              "name": "isPinned"
+            }
+          ],
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["author_id", "content"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "author",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "author_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "id",
+                  "author_id",
+                  "content",
+                  "created_at",
+                  "pinned_until"
+                ],
+                "computed_fields": ["isPinned"],
+                "filter": {},
+                "limit": 100,
+                "query_root_fields": ["select", "select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "post", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["content"],
+                "filter": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_post_comment_created",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerNotifyPostComment"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["post_id", "author_id", "content"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "author",
+              "using": { "foreign_key_constraint_on": "author_id" }
+            },
+            {
+              "name": "post",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "post_id": "id" },
+                  "remote_table": { "name": "post", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "id",
+                  "post_id",
+                  "author_id",
+                  "content",
+                  "created_at"
+                ],
+                "filter": {},
+                "query_root_fields": ["select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "post_comment", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["content"],
+                "filter": {
+                  "author": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "actor": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "actor": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["post_id", "actor_id", "reaction_type"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "actor",
+              "using": { "foreign_key_constraint_on": "actor_id" }
+            },
+            {
+              "name": "post",
+              "using": { "foreign_key_constraint_on": "post_id" }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "post_id",
+                  "actor_id",
+                  "reaction_type",
+                  "created_at"
+                ],
+                "filter": {},
+                "query_root_fields": [],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "post_reaction", "schema": "public" }
+        },
+        {
+          "array_relationships": [
+            {
+              "name": "albums",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "profile_id",
+                  "table": { "name": "media_album", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "eventRsvps",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "attendee_id" },
+                  "remote_table": { "name": "event_rsvp", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "posts",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "author_id" },
+                  "remote_table": { "name": "post", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "profileBookmarks",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "owner_id" },
+                  "remote_table": {
+                    "name": "profile_bookmark",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "profileViews",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "profile_id" },
+                  "remote_table": { "name": "profile_view", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "receivedSparks",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "receiver_id" },
+                  "remote_table": { "name": "spark", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "sentSparks",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "sender_id" },
+                  "remote_table": { "name": "spark", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "unlockedAlbums",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "grantee_id" },
+                  "remote_table": { "name": "album_unlock", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "computed_fields": [
+            {
+              "comment": "The profile's age, if visible",
+              "definition": {
+                "function": { "name": "profile_age", "schema": "public" },
+                "table_argument": "profile_row"
+              },
+              "name": "age"
+            },
+            {
+              "comment": "Distance between the current user and the given profile, in meters",
+              "definition": {
+                "function": { "name": "profile_distance", "schema": "public" },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "distance"
+            },
+            {
+              "comment": "Friends of the given profile",
+              "definition": {
+                "function": { "name": "profile_friends", "schema": "public" },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "friends"
+            },
+            {
+              "comment": "fuzzed location",
+              "definition": {
+                "function": { "name": "fuzzed_location", "schema": "public" },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "fuzzedLocation"
+            },
+            {
+              "comment": "Whether the current user has bookmarked the given profile",
+              "definition": {
+                "function": {
+                  "name": "profile_is_bookmarked",
+                  "schema": "public"
+                },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "isBookmarked"
+            },
+            {
+              "comment": "Whether the current user is friends with the given profile",
+              "definition": {
+                "function": { "name": "profile_is_friend", "schema": "public" },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "isFriend"
+            },
+            {
+              "comment": "Mutual friends between the current user and the given profile",
+              "definition": {
+                "function": {
+                  "name": "profile_mutual_friends",
+                  "schema": "public"
+                },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "mutualFriends"
+            },
+            {
+              "comment": "Friendship between the current user and the given profile",
+              "definition": {
+                "function": {
+                  "name": "profile_our_friendship",
+                  "schema": "public"
+                },
+                "session_argument": "hasura_session",
+                "table_argument": "profile_row"
+              },
+              "name": "ourFriendship"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_profile_created",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerAddProfileToClaims"
+            },
+            {
+              "definition": {
+                "enable_manual": false,
+                "update": {
+                  "columns": ["handle", "display_name", "avatar_uri"]
+                }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_profile_notification_fields_updated",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerUpdateStreamChatUser"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                },
+                "columns": [
+                  "age_is_visible",
+                  "appear_on_map",
+                  "details",
+                  "display_name",
+                  "handle",
+                  "last_location",
+                  "last_seen",
+                  "onboarding_step",
+                  "seen_before",
+                  "shady_mode",
+                  "should_appear_online",
+                  "show_distance",
+                  "sun_sign_is_visible",
+                  "user_id"
+                ]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "private",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "id" },
+                  "remote_table": {
+                    "name": "profile_private",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "user",
+              "using": { "foreign_key_constraint_on": "user_id" }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "age_is_visible",
+                  "avatar_uri",
+                  "details",
+                  "display_name",
+                  "handle",
+                  "id",
+                  "last_seen",
+                  "onboarding_step",
+                  "sun_sign_is_visible"
+                ],
+                "computed_fields": [
+                  "age",
+                  "distance",
+                  "isBookmarked",
+                  "fuzzedLocation",
+                  "isFriend"
+                ],
+                "filter": {},
+                "query_root_fields": ["select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "profile", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                },
+                "columns": [
+                  "age_is_visible",
+                  "appear_on_map",
+                  "details",
+                  "display_name",
+                  "handle",
+                  "last_location",
+                  "last_seen",
+                  "onboarding_step",
+                  "seen_before",
+                  "shady_mode",
+                  "should_appear_online",
+                  "show_distance",
+                  "sun_sign_is_visible"
+                ],
+                "filter": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "profile": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_profile_block_created",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerDeleteStreamChannel"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "profile": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["profile_id", "blocked_profile_id"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "blockedProfile",
+              "using": { "foreign_key_constraint_on": "blocked_profile_id" }
+            },
+            {
+              "name": "profile",
+              "using": { "foreign_key_constraint_on": "profile_id" }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": ["profile_id", "blocked_profile_id", "created_at"],
+                "filter": {
+                  "profile": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "profile_block", "schema": "public" }
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "owner": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "owner": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["owner_id", "profile_id"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "owner",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "owner_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "profile",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "profile_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": ["created_at", "owner_id", "profile_id"],
+                "filter": {
+                  "owner": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "profile_bookmark", "schema": "public" }
+        },
+        {
+          "object_relationships": [
+            {
+              "name": "user",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "user_id": "id" },
+                  "remote_table": { "name": "user", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "appear_on_map",
+                  "created_at",
+                  "id",
+                  "last_location",
+                  "seen_before",
+                  "shady_mode",
+                  "should_appear_online",
+                  "show_distance",
+                  "user_id"
+                ],
+                "filter": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                },
+                "query_root_fields": [],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "profile_private", "schema": "public" }
+        },
+        {
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "viewer": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": ["profile_id", "timestamp", "viewer_id"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "profile",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "profile_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "viewer",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "viewer_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": ["profile_id", "timestamp", "viewer_id"],
+                "filter": {
+                  "_or": [
+                    {
+                      "profile": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    },
+                    {
+                      "viewer": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    }
+                  ]
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "profile_view", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": ["timestamp"],
+                "filter": {
+                  "viewer": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" },
+                "update": { "columns": ["created_at"] }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_spark_created_or_updated",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerNotifySpark"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "sender": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                },
+                "columns": [
+                  "created_at",
+                  "receiver_id",
+                  "sender_id",
+                  "spark_type"
+                ]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "receiver",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "receiver_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            },
+            {
+              "name": "sender",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "sender_id": "id" },
+                  "remote_table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "created_at",
+                  "receiver_id",
+                  "sender_id",
+                  "spark_type"
+                ],
+                "filter": {
+                  "_or": [
+                    {
+                      "sender": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    },
+                    {
+                      "receiver": {
+                        "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                      }
+                    }
+                  ]
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "spark", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": ["created_at"],
+                "filter": {
+                  "sender": {
+                    "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "array_relationships": [
+            {
+              "name": "fcmTokens",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "id": "user_id" },
+                  "remote_table": {
+                    "name": "user_fcm_token",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "profiles",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "user_id",
+                  "table": { "name": "profile", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "delete": { "columns": "*" },
+                "enable_manual": false
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_user_deleted",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 3,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerDeleteUser"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": { "firebase_id": { "_eq": "X-Hasura-User-Id" } },
+                "columns": [
+                  "birthdate",
+                  "phone_iso_country_code",
+                  "email",
+                  "email_updates_opt_in",
+                  "firebase_id",
+                  "full_name",
+                  "last_login",
+                  "phone_number"
+                ]
+              },
+              "role": "user"
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "birthdate",
+                  "phone_iso_country_code",
+                  "created_at",
+                  "email",
+                  "email_updates_opt_in",
+                  "firebase_id",
+                  "full_name",
+                  "id",
+                  "last_login",
+                  "phone_number"
+                ],
+                "filter": { "firebase_id": { "_eq": "X-Hasura-User-Id" } },
+                "query_root_fields": ["select"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "user", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "birthdate",
+                  "phone_iso_country_code",
+                  "email",
+                  "email_updates_opt_in",
+                  "full_name",
+                  "last_login",
+                  "phone_number"
+                ],
+                "filter": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_user_fcm_token_created",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerAddDeviceToStreamChat"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                },
+                "columns": ["token", "updated_at", "user_id"]
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "user",
+              "using": {
+                "manual_configuration": {
+                  "column_mapping": { "user_id": "id" },
+                  "remote_table": { "name": "user", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": ["updated_at", "token", "user_id"],
+                "filter": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "user_fcm_token", "schema": "public" },
+          "update_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "user": { "firebase_id": { "_eq": "X-Hasura-User-Id" } }
+                },
+                "columns": ["updated_at", "user_id"],
+                "filter": {}
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "array_relationships": [
+            {
+              "name": "events",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "venue_id",
+                  "table": { "name": "event", "schema": "public" }
+                }
+              }
+            }
+          ],
+          "event_triggers": [
+            {
+              "definition": {
+                "enable_manual": false,
+                "insert": { "columns": "*" },
+                "update": { "columns": ["details"] }
+              },
+              "headers": [
+                {
+                  "name": "x-shared-secret",
+                  "value_from_env": "FIREBASE_SHARED_SECRET"
+                }
+              ],
+              "name": "on_venue_created_or_details_updated",
+              "retry_conf": {
+                "interval_sec": 10,
+                "num_retries": 0,
+                "timeout_sec": 60
+              },
+              "webhook": "{{TRIGGER_BASE_URL}}/triggerFetchVenueImages"
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "id",
+                  "source_ids",
+                  "name",
+                  "location",
+                  "details",
+                  "is_active",
+                  "created_at",
+                  "updated_at"
+                ],
+                "filter": {},
+                "limit": 100,
+                "query_root_fields": ["select", "select_by_pk"],
+                "subscription_root_fields": []
+              },
+              "role": "user"
+            }
+          ],
+          "table": { "name": "venue", "schema": "public" }
+        }
+      ]
+    }
+  ],
+  "version": 3
+}

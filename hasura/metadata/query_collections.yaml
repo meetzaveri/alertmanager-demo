@@ -1,0 +1,21 @@
+- name: allowed-queries
+  definition:
+    queries:
+      - name: getAlbumById
+        query: |
+          query getAlbumById ($AlbumId: Int!) {
+            Album_by_pk(AlbumId: $AlbumId) {
+              AlbumId
+              ArtistId
+              Title
+            }
+          }
+      - name: FetchAlbumById
+        query: |
+          query FetchAlbumById ($AlbumId: Int!) {
+            Album_by_pk(AlbumId: $AlbumId) {
+              AlbumId
+              ArtistId
+              Title
+            }
+          }

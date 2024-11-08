@@ -1,0 +1,156 @@
+version: "3.8"
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:14
+    expose:
+      - 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_DB: postgres
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    ports:
+      - 5050:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_USERNAME}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+  graphql-engine:
+    container_name: graphql-engine
+    restart: on-failure
+    image: hasura/graphql-engine:v2.41.0.cli-migrations-v3
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    volumes:
+      - ./hasura/migrations:/hasura-migrations
+      - ./hasura/metadata:/hasura-metadata
+
+    environment:
+      # the postgres database where hasura metadata will be stored
+      # HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@postgres:5432/hasurametadata
+      HGE_DATABASE_URL: postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      # PG_DATABASE_URL: postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      HASURA_GRAPHQL_EE_LICENSE_KEY: eyJhbGciOiJSUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJIYXN1cmEiLCJzdWIiOiJjaHJpcy0xIiwiZXhwIjoxNzU2NTgyNDUyLCJpYXQiOjE2NjE5NzQ0NTIsImp0aSI6ImU4NmU1YTU0LWFkM2ItNDllNi05OGNhLWFiMzRiMGE1MGY4ZiJ9.RIlbx2QnDF5qbX7HUUm60Ei-HvaUyGdAWZqn6RLbm0vl6vRoxEVJ3yhozTqovpACSvntw2ADKtYkYcAC0SkYc6OvT1RO74H8soiVY25c2upbqvm6cXsLqaaHnh37_HJbFUHlD93hGcjQUUCQPnp0ETY51s5WxOj4mQlOXRBXmXKyJFmJnH7r5ezVoXQ9TvyQOks8a7XbWAjWBnzeK0HQ4u8Ap5Y5lOs9u-WGeZyhIj6GOkR0Jl4RrOXTXnuIsw60VXiE5gNutIt_uY5UTpm7LT8n5LrlCj8AwUJ7ZSCQjAd6-T_CcisH7xOurajhXW5GrL0GMnffPOxejQAQQAMZarxAxU_kRcQrT6XNcAvXZ6q5sAHhDyyDDornld5dPSRspA8wUV8Y3nnz6WWqvI9TXxxV9CmGvBd1AH-sQMlRp12uxkaLrz8IEYK2Zv1Nj-XJaCFActSuBVSAf-MV2lMdZEx_iBQKk57Ze0l3G20AhVwnVufsEWf1VpjRTxR40cqR
+      CHINOOK_DATABASE_URL: postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@postgres:5432/chinook
+      # HASURA_GRAPHQL_PRO_KEY: eyJwcm9qZWN0X2lkIjoiYzUwM2FhNTQtODVlNS00YTMxLWJkOWMtZGY0YTk2NzdiZTQyIiwiY29uc29sZV9pZCI6ImM1MDNhYTU0LTg1ZTUtNGEzMS1iZDljLWRmNGE5Njc3YmU0Ml9jb25zb2xlIiwic2VydmVyX2lkIjoiYzUwM2FhNTQtODVlNS00YTMxLWJkOWMtZGY0YTk2NzdiZTQyX3NlcnZlciIsInNlcnZlcl9zZWNyZXQiOiJXSGEwZVh5ZEhNNFExMHFSTHlSWG10dXltR1c2a240bEthUHphQ0FkdXp5NEFGa2h4VDZMbTZPQjE1VW9sOXJvIn0=
+      # HASURA_GRAPHQL_REDIS_URL: redis://default:O9lnB492pS9HiCXMkogkkXkSkIs76Ay5@redis-10754.c326.us-east-1-3.ec2.cloud.redislabs.com:10754
+      # enable the console served by server
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
+      # enable debugging mode. It is recommended to disable this in production
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+      HASURA_GRAPHQL_REMOTE_SCHEMA_PRIORITIZE_DATA: "true"
+      # uncomment next line to set an admin secret
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
+      HASURA_GRAPHQL_SERVER_NAME: "HASURA_GRAPHQL_SERVER_NAME"
+
+  otel-collector:
+    container_name: otel-collector
+    image: ${OTEL_COLLECTOR_IMAGE}
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+      # - ./otel-example-from-doc.yaml:/etc/otelcol-contrib/config.yaml
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - NR_API_KEY=${NR_API_KEY}
+    ports:
+      - 1888:1888 # pprof extension
+      - 8889:8889 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      - 4317:4317 # OTLP gRPC receiver
+      - 4318:4318 # OTLP http receiver
+      - 55679:55679 # zpages extension
+
+  prometheus:
+    container_name: hge-prom
+    image: prom/prometheus:v2.44.0
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert.rules:/etc/prometheus/alert.rules
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    links:
+      - alertmanager:alertmanager
+    restart: always
+    deploy:
+      mode: global
+
+  alertmanager:
+    container_name: hge-alert-manager
+    image: prom/alertmanager:v0.25.0
+    ports:
+      - 9093:9093
+    volumes:
+      - ./alertmanager/config.yaml/:/etc/alertmanager/alertmanager.yml
+    restart: always
+    deploy:
+      mode: global
+
+  jaeger:
+    container_name: hge-jaeger
+    image: jaegertracing/all-in-one:1.57
+    restart: always
+    ports:
+      - 4002:16686
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  loki:
+    container_name: loki
+    image: ${LOKI_IMAGE}
+    ports:
+      - ${LOKI_PORT}:3100
+    command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      mode: global
+
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+  node_server:
+    container_name: node_server
+    image: node:20
+    ports:
+      - 8000:8000
+    restart: always
+    volumes:
+      - ./node-server:/app
+    working_dir: /app
+    command: bash -c 'npm install && npm start'
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+  postgres-data:
+    name: postgres-data
+  pgadmin-data:
+    name: pgadmin-data

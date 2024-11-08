@@ -1,0 +1,3 @@
+hasura metadata export --admin-secret MzEcDH8X1Lo8AIKQ5z8wisSDZky1PgZprOiaPMzFQqCaTKeZ8IxUrgm3NjqPkoTT --endpoint https://evolving-ladybird-91.hasura.app
+
+hasura console --admin-secret MzEcDH8X1Lo8AIKQ5z8wisSDZky1PgZprOiaPMzFQqCaTKeZ8IxUrgm3NjqPkoTT --endpoint https://evolving-ladybird-91.hasura.app

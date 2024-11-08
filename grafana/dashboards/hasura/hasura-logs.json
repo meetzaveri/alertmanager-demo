@@ -1,55 +1,4 @@
 {
-  "__elements": {},
-  "__inputs": [
-    {
-      "description": "",
-      "label": "Loki",
-      "name": "DS_LOKI",
-      "pluginId": "loki",
-      "pluginName": "Loki",
-      "type": "datasource"
-    },
-    {
-      "description": "",
-      "label": "Jaeger",
-      "name": "DS_JAEGER",
-      "pluginId": "jaeger",
-      "pluginName": "Jaeger",
-      "type": "datasource"
-    }
-  ],
-  "__requires": [
-    {
-      "id": "grafana",
-      "name": "Grafana",
-      "type": "grafana",
-      "version": "9.5.2"
-    },
-    {
-      "id": "jaeger",
-      "name": "Jaeger",
-      "type": "datasource",
-      "version": "1.0.0"
-    },
-    {
-      "id": "logs",
-      "name": "Logs",
-      "type": "panel",
-      "version": ""
-    },
-    {
-      "id": "loki",
-      "name": "Loki",
-      "type": "datasource",
-      "version": "1.0.0"
-    },
-    {
-      "id": "traces",
-      "name": "Traces",
-      "type": "panel",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -70,7 +19,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -136,6 +84,84 @@
       ],
       "title": "Trace Detail",
       "type": "traces"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "editorMode": "code",
+          "expr": "{exporter=\"OTLP\",job=\"hasura\"}",
+          "key": "Q-de85ff0d-6439-4ef6-8571-c46caba43a12-0",
+          "legendFormat": "{{label}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Hasura Logs by OTEL",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "editorMode": "builder",
+          "expr": "{exporter=\"OTLP\", job=\"hasura\"} | json",
+          "key": "Q-de85ff0d-6439-4ef6-8571-c46caba43a12-0",
+          "legendFormat": "{{job}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Hasura Logs by OTEL (with JSON parsed)",
+      "type": "logs"
     }
   ],
   "refresh": "",
@@ -184,7 +210,11 @@
         "type": "datasource"
       },
       {
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "loki",
           "uid": "${DS_LOKI}"
@@ -215,6 +245,7 @@
           "uid": "${DS_LOKI}"
         },
         "definition": "",
+        "error": {},
         "hide": 0,
         "includeAll": true,
         "label": "Instance",
@@ -344,6 +375,6 @@
   "timezone": "",
   "title": "Hasura Logs & Traces",
   "uid": "b4a37738-ba1b-4252-8905-516de01093ea",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

@@ -1,0 +1,19 @@
+- comment: ""
+  definition:
+    query:
+      collection_name: allowed-queries
+      query_name: FetchAlbumById
+  methods:
+    - POST
+  name: FetchAlbumById
+  url: fetchalbumbyid
+- comment: ""
+  definition:
+    query:
+      collection_name: allowed-queries
+      query_name: getAlbumById
+  methods:
+    - GET
+    - POST
+  name: getAlbumById
+  url: getalbumbyid
